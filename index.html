@@ -157,6 +157,11 @@ const yRefs = d3.scalePoint()
     .domain(d3.range(refineries.length))
     .range([60, height - 60]);
 
+const wellRectWidth = 70;
+const wellRectHeight = 30;
+const refRectWidth = 70;
+const refRectHeight = 30;
+
 // background links
 svg.append("g")
     .selectAll(".link")
@@ -164,12 +169,12 @@ svg.append("g")
     .enter()
     .append("line")
     .attr("class", "link")
-    .attr("x1", leftX)
+    .attr("x1", d => leftX + wellRectWidth / 2)
     .attr("y1", d => yWells(d.well))
-    .attr("x2", rightX)
+    .attr("x2", d => rightX - refRectWidth / 2)
     .attr("y2", d => yRefs(d.refinerie));
 
-// well nodes
+// well nodes (rectangles with name and cost)
 const wellGroup = svg.append("g")
     .selectAll(".well-node")
     .data(wells)
@@ -178,15 +183,21 @@ const wellGroup = svg.append("g")
     .attr("class", "node")
     .attr("transform", (d, i) => `translate(${leftX},${yWells(i)})`);
 
-wellGroup.append("circle")
-    .attr("r", 18)
+wellGroup.append("rect")
+    .attr("x", -wellRectWidth / 2)
+    .attr("y", -wellRectHeight / 2)
+    .attr("width", wellRectWidth)
+    .attr("height", wellRectHeight)
+    .attr("rx", 7)
+    .attr("ry", 7)
     .attr("class", "well");
 
 wellGroup.append("text")
-    .attr("dy", 4)
-    .text(d => d.name);
+    .attr("dy", "0.35em")
+    .attr("text-anchor", "middle")
+    .text(d => `🛢 ${d.name} ($${d.cost})`);
 
-// refinery nodes
+// refinery nodes (rectangles with name and cost)
 const refGroup = svg.append("g")
     .selectAll(".ref-node")
     .data(refineries)
@@ -195,13 +206,19 @@ const refGroup = svg.append("g")
     .attr("class", "node")
     .attr("transform", (d, i) => `translate(${rightX},${yRefs(i)})`);
 
-refGroup.append("circle")
-    .attr("r", 18)
+refGroup.append("rect")
+    .attr("x", -refRectWidth / 2)
+    .attr("y", -refRectHeight / 2)
+    .attr("width", refRectWidth)
+    .attr("height", refRectHeight)
+    .attr("rx", 7)
+    .attr("ry", 7)
     .attr("class", "refinery");
 
 refGroup.append("text")
-    .attr("dy", 4)
-    .text(d => d.name);
+    .attr("dy", "0.35em")
+    .attr("text-anchor", "middle")
+    .text(d => `⚗️ ${d.name} ($${d.cost})`);
 
 const activeLayer = svg.append("g");
 
@@ -220,9 +237,9 @@ function render() {
         .enter()
         .append("line")
         .attr("class", "active")
-        .attr("x1", d => leftX)
+        .attr("x1", d => leftX + wellRectWidth / 2)
         .attr("y1", d => yWells(d.well))
-        .attr("x2", d => rightX)
+        .attr("x2", d => rightX - refRectWidth / 2)
         .attr("y2", d => yRefs(d.refinerie))
         .attr("stroke-width", d => 2 + d.flow / 10);
 
