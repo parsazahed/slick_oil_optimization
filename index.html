@@ -10,9 +10,16 @@
         background: #111;
         color: #eee;
         font-family: sans-serif;
+        display: flex;
+        justify-content: center;
+    }
+    .container {
+        text-align: center;
     }
     svg {
         border: 1px solid #333;
+        margin: 0 auto;
+        display: block;
     }
 
     .well {
@@ -48,7 +55,10 @@
 </head>
 <body>
 
+<div class="container">
+
 <h2>Slick Oil – Interactive Optimal Distribution</h2>
+<p>این نمودار جریان نفت، بهترین تخصیص چاه‌ها به پالایشگاه‌ها را برای حداقل هزینه نشان می‌دهد.</p>
 
 <label>
     Total Oil Demand:
@@ -57,6 +67,8 @@
 </label>
 
 <svg width="900" height="520"></svg>
+
+</div>
 
 <script>
 /* =====================================================
