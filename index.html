@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Slick Oil – Bipartite Optimizer</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+    body {
+        background: #111;
+        color: #eee;
+        font-family: sans-serif;
+    }
+    svg {
+        border: 1px solid #333;
+    }
+
+    .well {
+        fill: #4caf50;
+    }
+
+    .refinery {
+        fill: #ff9800;
+    }
+
+    .node text {
+        fill: #fff;
+        font-size: 12px;
+        text-anchor: middle;
+    }
+
+    .link {
+        stroke: #444;
+        stroke-width: 1;
+    }
+
+    .active {
+        stroke: #00e5ff;
+    }
+
+    .flow-label {
+        fill: #00e5ff;
+        font-size: 12px;
+        font-weight: bold;
+        pointer-events: none;
+    }
+</style>
+</head>
+<body>
+
+<h2>Slick Oil – Interactive Optimal Distribution</h2>
+
+<label>
+    Total Oil Demand:
+    <input type="range" id="demandSlider" min="10" max="300" step="5" value="100">
+    <span id="demandValue">100</span>
+</label>
+
+<svg width="900" height="520"></svg>
+
+<script>
+/* =====================================================
+   DATA (EXACTLY YOUR STRUCTURE)
+===================================================== */
+
+var wells = [
+    {name: "1", cost: 3,   capacity: 40,  used: 0},
+    {name: "2", cost: 12,  capacity: 50,  used: 0},
+    {name: "3", cost: 4,   capacity: 40,  used: 0},
+    {name: "4", cost: 6,   capacity: 100, used: 0},
+    {name: "5", cost: 10,  capacity: 100, used: 0},
+    {name: "6", cost: 2.5, capacity: 100, used: 0}
+];
+
+var refineries = [
+    {name: "A", cost: 4, capacity: 100, used: 0},
+    {name: "B", cost: 2, capacity: 40,  used: 0},
+    {name: "C", cost: 6, capacity: 80,  used: 0},
+    {name: "D", cost: 1, capacity: 100, used: 0},
+    {name: "E", cost: 8, capacity: 80,  used: 0}
+];
+
+var links = [
+    {well: 0, refinerie: 0, flow: 0},
+    {well: 0, refinerie: 1, flow: 0},
+    {well: 1, refinerie: 1, flow: 0},
+    {well: 1, refinerie: 2, flow: 0},
+    {well: 1, refinerie: 3, flow: 0},
+    {well: 2, refinerie: 1, flow: 0},
+    {well: 2, refinerie: 2, flow: 0},
+    {well: 2, refinerie: 4, flow: 0},
+    {well: 3, refinerie: 0, flow: 0},
+    {well: 3, refinerie: 4, flow: 0},
+    {well: 4, refinerie: 3, flow: 0},
+    {well: 4, refinerie: 4, flow: 0},
+    {well: 5, refinerie: 2, flow: 0},
+    {well: 5, refinerie: 4, flow: 0}
+];
+
+/* =====================================================
+   SOLVER (GREEDY, INDEX-BASED, CORRECT)
+===================================================== */
+
+function solve(totalDemand) {
+    wells.forEach(w => w.used = 0);
+    refineries.forEach(r => r.used = 0);
+    links.forEach(l => l.flow = 0);
+
+    const routes = links.map((l, i) => ({
+        index: i,
+        well: l.well,
+        ref: l.refinerie,
+        cost: wells[l.well].cost + refineries[l.refinerie].cost
+    }));
+
+    routes.sort((a, b) => a.cost - b.cost);
+
+    let remaining = totalDemand;
+
+    for (let r of routes) {
+        if (remaining <= 0) break;
+
+        const w = wells[r.well];
+        const ref = refineries[r.ref];
+
+        const available = Math.min(
+            w.capacity - w.used,
+            ref.capacity - ref.used,
+            remaining
+        );
+
+        if (available > 0) {
+            w.used += available;
+            ref.used += available;
+            links[r.index].flow = available;
+            remaining -= available;
+        }
+    }
+}
+
+/* =====================================================
+   VISUALIZATION SETUP
+===================================================== */
+
+const svg = d3.select("svg");
+const width = +svg.attr("width");
+const height = +svg.attr("height");
+
+const leftX = 220;
+const rightX = 680;
+
+const yWells = d3.scalePoint()
+    .domain(d3.range(wells.length))
+    .range([60, height - 60]);
+
+const yRefs = d3.scalePoint()
+    .domain(d3.range(refineries.length))
+    .range([60, height - 60]);
+
+// background links
+svg.append("g")
+    .selectAll(".link")
+    .data(links)
+    .enter()
+    .append("line")
+    .attr("class", "link")
+    .attr("x1", leftX)
+    .attr("y1", d => yWells(d.well))
+    .attr("x2", rightX)
+    .attr("y2", d => yRefs(d.refinerie));
+
+// well nodes
+const wellGroup = svg.append("g")
+    .selectAll(".well-node")
+    .data(wells)
+    .enter()
+    .append("g")
+    .attr("class", "node")
+    .attr("transform", (d, i) => `translate(${leftX},${yWells(i)})`);
+
+wellGroup.append("circle")
+    .attr("r", 18)
+    .attr("class", "well");
+
+wellGroup.append("text")
+    .attr("dy", 4)
+    .text(d => d.name);
+
+// refinery nodes
+const refGroup = svg.append("g")
+    .selectAll(".ref-node")
+    .data(refineries)
+    .enter()
+    .append("g")
+    .attr("class", "node")
+    .attr("transform", (d, i) => `translate(${rightX},${yRefs(i)})`);
+
+refGroup.append("circle")
+    .attr("r", 18)
+    .attr("class", "refinery");
+
+refGroup.append("text")
+    .attr("dy", 4)
+    .text(d => d.name);
+
+const activeLayer = svg.append("g");
+
+/* =====================================================
+   RENDER FLOWS
+===================================================== */
+
+function render() {
+    activeLayer.selectAll("*").remove();
+
+    const active = links.filter(l => l.flow > 0);
+
+    // draw active lines
+    activeLayer.selectAll(".active")
+        .data(active)
+        .enter()
+        .append("line")
+        .attr("class", "active")
+        .attr("x1", d => leftX)
+        .attr("y1", d => yWells(d.well))
+        .attr("x2", d => rightX)
+        .attr("y2", d => yRefs(d.refinerie))
+        .attr("stroke-width", d => 2 + d.flow / 10);
+
+    // draw flow labels above the line
+    activeLayer.selectAll(".flow-label")
+        .data(active)
+        .enter()
+        .append("text")
+        .attr("class", "flow-label")
+        .attr("x", (leftX + rightX) / 2)
+        .attr("y", d => (yWells(d.well) + yRefs(d.refinerie)) / 2 - 5) // shift upward
+        .attr("text-anchor", "middle")
+        .attr("stroke", "#111")      // outline for contrast
+        .attr("stroke-width", 2)
+        .attr("paint-order", "stroke") // ensures stroke behind text
+        .text(d => d.flow)
+        .attr("fill", "#00e5ff");    // text color
+}
+
+/* =====================================================
+   SLIDER
+===================================================== */
+
+const slider = document.getElementById("demandSlider");
+const label = document.getElementById("demandValue");
+
+slider.addEventListener("input", () => {
+    label.textContent = slider.value;
+    solve(+slider.value);
+    render();
+});
+
+// initial run
+solve(+slider.value);
+render();
+
+</script>
+
+</body>
+</html>
